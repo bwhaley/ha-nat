@@ -1,0 +1,528 @@
+{
+  "Description" : "VPC 3 public subnets, 6 private subnets, and an autoscale group for NAT.",
+
+  "Parameters" : {
+    "KeyName": {
+      "Description" : "Name of existing keypair for access to the instance",
+      "Type": "String"
+    },
+    "VpcName": {
+      "Description" : "Name for the VPC",
+      "Type": "String"
+    },
+    "VpcCidrBlock": {
+      "Description" : "First two octets to use for the CIDR address range of this VPC",
+      "Type": "String",
+      "Default" : "10.100",
+      "MinLength": "4",
+      "MaxLength": "7",
+      "AllowedPattern": "(\\d{1,3})\\.(\\d{1,3})",
+      "ConstraintDescription": "must be dot separated prefix in the form x.y"
+    },
+    "NatImage": {
+      "Description" : "AMI to use for the NAT instance",
+      "Type": "String",
+      "MinLength": "12",
+      "MaxLength": "12",
+      "AllowedPattern": "ami-(\\w{8})",
+      "ConstraintDescription": "must be a valid AMI ID of the form ami-abcd1234"
+    }
+  },
+    "Resources": {
+        "NatAsgLaunchConfiguration": {
+           "Type" : "AWS::AutoScaling::LaunchConfiguration",
+           "DependsOn": "VPCGatewayAttachment",
+           "Properties" : {
+              "AssociatePublicIpAddress" : true,
+              "EbsOptimized" : false,
+              "IamInstanceProfile" : "arn:aws:iam::<account no>:instance-profile/NAT",
+              "ImageId" : { "Ref": "NatImage" },
+              "InstanceType" : "t2.small",
+              "KeyName" : { "Ref": "KeyName" },
+              "SecurityGroups" : [ { "Ref": "NatSG" }],
+              "UserData" : { "Fn::Base64" : {
+                "Fn::Join": [
+                        "",
+                        [
+                            "#!/bin/bash -x\n",
+                            "exec > /tmp/userdata.log 2>&1",
+                            "/usr/local/bin/ha-nat.sh\n"
+                        ]
+                    ]
+                }
+              }
+           }
+        },
+        "NatASG": {
+           "Type" : "AWS::AutoScaling::AutoScalingGroup",
+           "Properties" : {
+              "AvailabilityZones" : [ "us-east-1a", "us-east-1b", "us-east-1d" ],
+              "Cooldown" : "30",
+              "DesiredCapacity" : "3",
+              "HealthCheckGracePeriod" : "30",
+              "HealthCheckType" : "EC2",
+              "LaunchConfigurationName" : { "Ref": "NatAsgLaunchConfiguration"},
+              "MaxSize" : "3",
+              "MinSize" : "3",
+              "Tags" : [ {
+                 "Key" : "Name",
+                 "Value" : { "Fn::Join": [ "-", [ { "Ref": "VpcName" }, "NAT"] ] },
+                 "PropagateAtLaunch" : "true"
+              }],
+              "VPCZoneIdentifier" : [
+                { "Ref": "PublicA" },
+                { "Ref": "PublicB" },
+                { "Ref": "PublicD" }
+              ]
+           }
+        },
+        "NatDNSIngress": {
+            "Properties": {
+                "CidrIp": "10.0.0.0/16", 
+                "FromPort": "53", 
+                "GroupId": {
+                    "Ref": "NatSG"
+                }, 
+                "IpProtocol": "udp", 
+                "ToPort": "53"
+            }, 
+            "Type": "AWS::EC2::SecurityGroupIngress"
+        }, 
+        "NatPapertrail": {
+            "Properties": {
+                "CidrIp": "10.0.0.0/16", 
+                "FromPort": "11652", 
+                "GroupId": {
+                    "Ref": "NatSG"
+                }, 
+                "IpProtocol": "udp", 
+                "ToPort": "11652"
+            }, 
+            "Type": "AWS::EC2::SecurityGroupIngress"
+        }, 
+        "NatHTTPIngress": {
+            "Properties": {
+                "CidrIp": "10.0.0.0/16", 
+                "FromPort": "80", 
+                "GroupId": {
+                    "Ref": "NatSG"
+                }, 
+                "IpProtocol": "tcp", 
+                "ToPort": "80"
+            }, 
+            "Type": "AWS::EC2::SecurityGroupIngress"
+        }, 
+        "NatHTTPSIngress": {
+            "Properties": {
+                "CidrIp": "10.0.0.0/16", 
+                "FromPort": "443", 
+                "GroupId": {
+                    "Ref": "NatSG"
+                }, 
+                "IpProtocol": "tcp", 
+                "ToPort": "443"
+            }, 
+            "Type": "AWS::EC2::SecurityGroupIngress"
+        }, 
+        "NatICMPIngress": {
+            "Properties": {
+                "CidrIp": "10.0.0.0/16", 
+                "FromPort": "-1", 
+                "GroupId": {
+                    "Ref": "NatSG"
+                }, 
+                "IpProtocol": "icmp", 
+                "ToPort": "-1"
+            }, 
+            "Type": "AWS::EC2::SecurityGroupIngress"
+        }, 
+        "NatNTPIngress": {
+            "Properties": {
+                "CidrIp": "10.0.0.0/16", 
+                "FromPort": "123", 
+                "GroupId": {
+                    "Ref": "NatSG"
+                }, 
+                "IpProtocol": "udp", 
+                "ToPort": "123"
+            }, 
+            "Type": "AWS::EC2::SecurityGroupIngress"
+        }, 
+        "NatSG": {
+            "Properties": {
+                "GroupDescription": "Security group for NAT host.", 
+                "VpcId": {
+                    "Ref": "Vpc"
+                }
+            }, 
+            "Type": "AWS::EC2::SecurityGroup"
+        }, 
+        "PublicA": {
+            "Properties": {
+                "AvailabilityZone": "us-east-1a", 
+                "CidrBlock": { 
+                  "Fn::Join" : [ ".", [ { "Ref": "VpcCidrBlock" }, "0", "0/24" ] ] 
+                },
+                "Tags": [
+                    {
+                        "Key": "Name", 
+                        "Value": "PublicA"
+                    }
+                ], 
+                "VpcId": {
+                    "Ref": "Vpc"
+                }
+            }, 
+            "Type": "AWS::EC2::Subnet"
+        }, 
+        "PublicAAssociation": {
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "PublicRouteTable"
+                }, 
+                "SubnetId": {
+                    "Ref": "PublicA"
+                }
+            }, 
+            "Type": "AWS::EC2::SubnetRouteTableAssociation"
+        }, 
+        "PublicB": {
+            "Properties": {
+                "AvailabilityZone": "us-east-1b", 
+                "CidrBlock": { 
+                  "Fn::Join" : [ ".", [ { "Ref": "VpcCidrBlock" }, "1", "0/24" ] ] 
+                },
+                "Tags": [
+                    {
+                        "Key": "Name", 
+                        "Value": "PublicB"
+                    }
+                ], 
+                "VpcId": {
+                    "Ref": "Vpc"
+                }
+            }, 
+            "Type": "AWS::EC2::Subnet"
+        }, 
+        "PublicBAssociation": {
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "PublicRouteTable"
+                }, 
+                "SubnetId": {
+                    "Ref": "PublicB"
+                }
+            }, 
+            "Type": "AWS::EC2::SubnetRouteTableAssociation"
+        }, 
+        "PublicD": {
+            "Properties": {
+                "AvailabilityZone": "us-east-1d", 
+                "CidrBlock": { 
+                  "Fn::Join" : [ ".", [ { "Ref": "VpcCidrBlock" }, "2", "0/24" ] ]
+                },
+                "Tags": [
+                    {
+                        "Key": "Name", 
+                        "Value": "PublicD"
+                    }
+                ], 
+                "VpcId": {
+                    "Ref": "Vpc"
+                }
+            }, 
+            "Type": "AWS::EC2::Subnet"
+        }, 
+        "PublicDAssociation": {
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "PublicRouteTable"
+                }, 
+                "SubnetId": {
+                    "Ref": "PublicD"
+                }
+            }, 
+            "Type": "AWS::EC2::SubnetRouteTableAssociation"
+        }, 
+        "PrivateA": {
+            "Properties": {
+                "AvailabilityZone": "us-east-1a", 
+                "CidrBlock": { 
+                  "Fn::Join" : [ ".", [ { "Ref": "VpcCidrBlock" }, "10", "0/24" ] ] 
+                },
+                "Tags": [
+                    {
+                        "Key": "Name", 
+                        "Value": "PrivateA"
+                    },
+                    {
+                        "Key": "network", 
+                        "Value": "private"
+                    }
+                ], 
+                "VpcId": {
+                    "Ref": "Vpc"
+                }
+            }, 
+            "Type": "AWS::EC2::Subnet"
+        }, 
+        "PrivateARouteAssociation": {
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "ZoneAPrivateRouteTable"
+                }, 
+                "SubnetId": {
+                    "Ref": "PrivateA"
+                }
+            }, 
+            "Type": "AWS::EC2::SubnetRouteTableAssociation"
+        }, 
+        "PrivateB": {
+            "Properties": {
+                "AvailabilityZone": "us-east-1b", 
+                "CidrBlock": { 
+                  "Fn::Join" : [ ".", [ { "Ref": "VpcCidrBlock" }, "11", "0/24" ] ] 
+                },
+                "Tags": [
+                    {
+                        "Key": "Name", 
+                        "Value": "PrivateB"
+                    },
+                    {
+                        "Key": "network", 
+                        "Value": "private"
+                    }
+                ], 
+                "VpcId": {
+                    "Ref": "Vpc"
+                }
+            }, 
+            "Type": "AWS::EC2::Subnet"
+        }, 
+        "PrivateBRouteAssociation": {
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "ZoneBPrivateRouteTable"
+                }, 
+                "SubnetId": {
+                    "Ref": "PrivateB"
+                }
+            }, 
+            "Type": "AWS::EC2::SubnetRouteTableAssociation"
+        }, 
+        "PrivateD": {
+            "Properties": {
+                "AvailabilityZone": "us-east-1d", 
+                "CidrBlock": { 
+                  "Fn::Join" : [ ".", [ { "Ref": "VpcCidrBlock" }, "12", "0/24" ] ] 
+                },
+                "Tags": [
+                    {
+                        "Key": "Name", 
+                        "Value": "PrivateD"
+                    },
+                    {
+                        "Key": "network", 
+                        "Value": "private"
+                    }
+                ], 
+                "VpcId": {
+                    "Ref": "Vpc"
+                }
+            }, 
+            "Type": "AWS::EC2::Subnet"
+        }, 
+        "PrivateDRouteAssociation": {
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "ZoneDPrivateRouteTable"
+                }, 
+                "SubnetId": {
+                    "Ref": "PrivateD"
+                }
+            }, 
+            "Type": "AWS::EC2::SubnetRouteTableAssociation"
+        }, 
+        "PersistenceA": {
+            "Properties": {
+                "AvailabilityZone": "us-east-1a", 
+                "CidrBlock": { 
+                  "Fn::Join" : [ ".", [ { "Ref": "VpcCidrBlock" }, "20", "0/24" ] ] 
+                },
+                "Tags": [
+                    {
+                        "Key": "Name", 
+                        "Value": "PersistenceA"
+                    },
+                    {
+                        "Key": "network", 
+                        "Value": "private"
+                    }
+                ], 
+                "VpcId": {
+                    "Ref": "Vpc"
+                }
+            }, 
+            "Type": "AWS::EC2::Subnet"
+        }, 
+        "PersistenceARouteAssociation": {
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "ZoneAPrivateRouteTable"
+                }, 
+                "SubnetId": {
+                    "Ref": "PersistenceA"
+                }
+            }, 
+            "Type": "AWS::EC2::SubnetRouteTableAssociation"
+        }, 
+        "PersistenceB": {
+            "Properties": {
+                "AvailabilityZone": "us-east-1b", 
+                "CidrBlock": { 
+                  "Fn::Join" : [ ".", [ { "Ref": "VpcCidrBlock" }, "21", "0/24" ] ] 
+                },
+                "Tags": [
+                    {
+                        "Key": "Name", 
+                        "Value": "PersistenceB"
+                    },
+                    {
+                        "Key": "network", 
+                        "Value": "private"
+                    }
+                ], 
+                "VpcId": {
+                    "Ref": "Vpc"
+                }
+            }, 
+            "Type": "AWS::EC2::Subnet"
+        }, 
+        "PersistenceBRouteAssociation": {
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "ZoneBPrivateRouteTable"
+                }, 
+                "SubnetId": {
+                    "Ref": "PersistenceB"
+                }
+            }, 
+            "Type": "AWS::EC2::SubnetRouteTableAssociation"
+        }, 
+        "PersistenceD": {
+            "Properties": {
+                "AvailabilityZone": "us-east-1d", 
+                "CidrBlock": { 
+                  "Fn::Join" : [ ".", [ { "Ref": "VpcCidrBlock" }, "22", "0/24" ] ] 
+                },
+                "Tags": [
+                    {
+                        "Key": "Name", 
+                        "Value": "PersistenceD"
+                    },
+                    {
+                        "Key": "network", 
+                        "Value": "private"
+                    }
+                ], 
+                "VpcId": {
+                    "Ref": "Vpc"
+                }
+            }, 
+            "Type": "AWS::EC2::Subnet"
+        }, 
+        "PersistenceDRouteAssociation": {
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "ZoneDPrivateRouteTable"
+                }, 
+                "SubnetId": {
+                    "Ref": "PersistenceD"
+                }
+            }, 
+            "Type": "AWS::EC2::SubnetRouteTableAssociation"
+        }, 
+        "ZoneAPrivateRouteTable": {
+            "Properties": {
+                "VpcId": {
+                    "Ref": "Vpc"
+                }
+            },
+            "Type": "AWS::EC2::RouteTable"
+        },
+        "ZoneBPrivateRouteTable": {
+            "Properties": {
+                "VpcId": {
+                    "Ref": "Vpc"
+                }
+            },
+            "Type": "AWS::EC2::RouteTable"
+        },
+        "ZoneDPrivateRouteTable": {
+            "Properties": {
+                "VpcId": {
+                    "Ref": "Vpc"
+                }
+            },
+            "Type": "AWS::EC2::RouteTable"
+        },
+        "PublicRouteTable": {
+            "Properties": {
+                "VpcId": {
+                    "Ref": "Vpc"
+                }
+            }, 
+            "Type": "AWS::EC2::RouteTable"
+        }, 
+        "DefaultPublicRoute": {
+            "DependsOn": "VPCGatewayAttachment", 
+            "Properties": {
+                "DestinationCidrBlock": "0.0.0.0/0", 
+                "GatewayId": {
+                    "Ref": "InternetGateway"
+                }, 
+                "RouteTableId": {
+                    "Ref": "PublicRouteTable"
+                }
+            }, 
+            "Type": "AWS::EC2::Route"
+        }, 
+        "InternetGateway": {
+            "Type": "AWS::EC2::InternetGateway"
+        },
+        "VPCGatewayAttachment": {
+            "DependsOn": "InternetGateway", 
+            "Properties": {
+                "InternetGatewayId": {
+                    "Ref": "InternetGateway"
+                }, 
+                "VpcId": {
+                    "Ref": "Vpc"
+                }
+            }, 
+            "Type": "AWS::EC2::VPCGatewayAttachment"
+        }, 
+        "Vpc": {
+            "Properties": {
+                "CidrBlock": {
+                  "Fn::Join" : [ ".", [ { "Ref": "VpcCidrBlock" }, "0", "0/16" ] ] 
+                },
+                "EnableDnsHostnames": "true", 
+                "EnableDnsSupport": "true", 
+                "Tags": [
+                    {
+                        "Key": "Name", 
+                        "Value": { "Ref": "VpcName" }
+                    } 
+                ]
+            }, 
+            "Type": "AWS::EC2::VPC"
+        }
+    },
+    "Outputs": {
+        "VpcId": {
+            "Description": "The ID of the VPC", 
+            "Value": { "Ref": "Vpc" }
+        } 
+    } 
+}

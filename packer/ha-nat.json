@@ -1,0 +1,47 @@
+{
+  "variables": {
+    "ami_name": "",
+    "aws_access_key": "",
+    "aws_secret_key": "",
+    "source_ami": "",
+    "description": "",
+    "region": "",
+    "subnet_id": "",
+    "vpc_id": ""
+  },
+  "builders": [{
+    "type": "amazon-ebs",
+    "access_key": "{{user `aws_access_key`}}",
+    "secret_key": "{{user `aws_secret_key`}}",
+    "region": "{{user `region`}}",
+    "source_ami": "{{user `source_ami`}}",
+    "instance_type": "t2.medium",
+    "ssh_username": "ubuntu",
+    "ssh_timeout": "5m",
+    "subnet_id": "{{user `subnet_id`}}",
+    "vpc_id": "{{user `vpc_id`}}",
+    "associate_public_ip_address": true,
+    "ami_virtualization_type": "hvm",
+    "ami_description": "{{user `description`}}",
+    "ami_name": "{{user `description`}}",
+    "tags": {
+      "Name": "{{user `ami_name`}}"
+    }
+  }],
+  "provisioners": [
+    {
+      "type": "shell",
+      "start_retry_timeout": "10m",
+      "inline": [
+        "sudo add-apt-repository -y ppa:rquillo/ansible",
+        "sudo apt-get -y update",
+        "sudo apt-get install -y ansible"
+      ]
+    },
+    {
+      "type": "ansible-local",
+      "playbook_file": "ami.yml",
+      "playbook_dir": "ansible/"
+    }
+  ]
+}
