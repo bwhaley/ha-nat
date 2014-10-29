@@ -35,7 +35,7 @@
            "Properties" : {
               "AssociatePublicIpAddress" : true,
               "EbsOptimized" : false,
-              "IamInstanceProfile" : "arn:aws:iam::<account no>:instance-profile/NAT",
+              "IamInstanceProfile" : "arn:aws:iam::797429411814:instance-profile/NAT",
               "ImageId" : { "Ref": "NatImage" },
               "InstanceType" : "t2.small",
               "KeyName" : { "Ref": "KeyName" },
@@ -45,8 +45,8 @@
                         "",
                         [
                             "#!/bin/bash -x\n",
-                            "exec > /tmp/userdata.log 2>&1",
-                            "/usr/local/bin/ha-nat.sh\n"
+                            "exec > /tmp/userdata.log 2>&1\n",
+                            "/bin/bash /usr/local/bin/ha-nat.sh\n"
                         ]
                     ]
                 }
@@ -56,14 +56,14 @@
         "NatASG": {
            "Type" : "AWS::AutoScaling::AutoScalingGroup",
            "Properties" : {
-              "AvailabilityZones" : [ "us-east-1a", "us-east-1b", "us-east-1d" ],
+              "AvailabilityZones" : [ "us-west-2a", "us-west-2b", "us-west-2c" ],
               "Cooldown" : "30",
-              "DesiredCapacity" : "3",
+              "DesiredCapacity" : "1",
               "HealthCheckGracePeriod" : "30",
               "HealthCheckType" : "EC2",
               "LaunchConfigurationName" : { "Ref": "NatAsgLaunchConfiguration"},
-              "MaxSize" : "3",
-              "MinSize" : "3",
+              "MaxSize" : "1",
+              "MinSize" : "1",
               "Tags" : [ {
                  "Key" : "Name",
                  "Value" : { "Fn::Join": [ "-", [ { "Ref": "VpcName" }, "NAT"] ] },
@@ -72,13 +72,15 @@
               "VPCZoneIdentifier" : [
                 { "Ref": "PublicA" },
                 { "Ref": "PublicB" },
-                { "Ref": "PublicD" }
+                { "Ref": "PublicC" }
               ]
            }
         },
         "NatDNSIngress": {
             "Properties": {
-                "CidrIp": "10.0.0.0/16", 
+                "CidrIp": {
+                  "Fn::Join" : [ ".", [ { "Ref": "VpcCidrBlock" }, "0", "0/24" ] ] 
+                },
                 "FromPort": "53", 
                 "GroupId": {
                     "Ref": "NatSG"
@@ -90,7 +92,9 @@
         }, 
         "NatPapertrail": {
             "Properties": {
-                "CidrIp": "10.0.0.0/16", 
+                "CidrIp": {
+                  "Fn::Join" : [ ".", [ { "Ref": "VpcCidrBlock" }, "0", "0/24" ] ] 
+                },
                 "FromPort": "11652", 
                 "GroupId": {
                     "Ref": "NatSG"
@@ -102,7 +106,9 @@
         }, 
         "NatHTTPIngress": {
             "Properties": {
-                "CidrIp": "10.0.0.0/16", 
+                "CidrIp": {
+                  "Fn::Join" : [ ".", [ { "Ref": "VpcCidrBlock" }, "0", "0/24" ] ] 
+                },
                 "FromPort": "80", 
                 "GroupId": {
                     "Ref": "NatSG"
@@ -114,7 +120,9 @@
         }, 
         "NatHTTPSIngress": {
             "Properties": {
-                "CidrIp": "10.0.0.0/16", 
+                "CidrIp": {
+                  "Fn::Join" : [ ".", [ { "Ref": "VpcCidrBlock" }, "0", "0/24" ] ] 
+                },
                 "FromPort": "443", 
                 "GroupId": {
                     "Ref": "NatSG"
@@ -126,7 +134,9 @@
         }, 
         "NatICMPIngress": {
             "Properties": {
-                "CidrIp": "10.0.0.0/16", 
+                "CidrIp": {
+                  "Fn::Join" : [ ".", [ { "Ref": "VpcCidrBlock" }, "0", "0/24" ] ] 
+                },
                 "FromPort": "-1", 
                 "GroupId": {
                     "Ref": "NatSG"
@@ -138,7 +148,9 @@
         }, 
         "NatNTPIngress": {
             "Properties": {
-                "CidrIp": "10.0.0.0/16", 
+                "CidrIp": {
+                  "Fn::Join" : [ ".", [ { "Ref": "VpcCidrBlock" }, "0", "0/24" ] ] 
+                },
                 "FromPort": "123", 
                 "GroupId": {
                     "Ref": "NatSG"
@@ -159,7 +171,7 @@
         }, 
         "PublicA": {
             "Properties": {
-                "AvailabilityZone": "us-east-1a", 
+                "AvailabilityZone": "us-west-2a", 
                 "CidrBlock": { 
                   "Fn::Join" : [ ".", [ { "Ref": "VpcCidrBlock" }, "0", "0/24" ] ] 
                 },
@@ -188,7 +200,7 @@
         }, 
         "PublicB": {
             "Properties": {
-                "AvailabilityZone": "us-east-1b", 
+                "AvailabilityZone": "us-west-2b", 
                 "CidrBlock": { 
                   "Fn::Join" : [ ".", [ { "Ref": "VpcCidrBlock" }, "1", "0/24" ] ] 
                 },
@@ -215,16 +227,16 @@
             }, 
             "Type": "AWS::EC2::SubnetRouteTableAssociation"
         }, 
-        "PublicD": {
+        "PublicC": {
             "Properties": {
-                "AvailabilityZone": "us-east-1d", 
+                "AvailabilityZone": "us-west-2c", 
                 "CidrBlock": { 
                   "Fn::Join" : [ ".", [ { "Ref": "VpcCidrBlock" }, "2", "0/24" ] ]
                 },
                 "Tags": [
                     {
                         "Key": "Name", 
-                        "Value": "PublicD"
+                        "Value": "PublicC"
                     }
                 ], 
                 "VpcId": {
@@ -233,20 +245,20 @@
             }, 
             "Type": "AWS::EC2::Subnet"
         }, 
-        "PublicDAssociation": {
+        "PublicCAssociation": {
             "Properties": {
                 "RouteTableId": {
                     "Ref": "PublicRouteTable"
                 }, 
                 "SubnetId": {
-                    "Ref": "PublicD"
+                    "Ref": "PublicC"
                 }
             }, 
             "Type": "AWS::EC2::SubnetRouteTableAssociation"
         }, 
         "PrivateA": {
             "Properties": {
-                "AvailabilityZone": "us-east-1a", 
+                "AvailabilityZone": "us-west-2a", 
                 "CidrBlock": { 
                   "Fn::Join" : [ ".", [ { "Ref": "VpcCidrBlock" }, "10", "0/24" ] ] 
                 },
@@ -279,7 +291,7 @@
         }, 
         "PrivateB": {
             "Properties": {
-                "AvailabilityZone": "us-east-1b", 
+                "AvailabilityZone": "us-west-2b", 
                 "CidrBlock": { 
                   "Fn::Join" : [ ".", [ { "Ref": "VpcCidrBlock" }, "11", "0/24" ] ] 
                 },
@@ -310,16 +322,16 @@
             }, 
             "Type": "AWS::EC2::SubnetRouteTableAssociation"
         }, 
-        "PrivateD": {
+        "PrivateC": {
             "Properties": {
-                "AvailabilityZone": "us-east-1d", 
+                "AvailabilityZone": "us-west-2c", 
                 "CidrBlock": { 
                   "Fn::Join" : [ ".", [ { "Ref": "VpcCidrBlock" }, "12", "0/24" ] ] 
                 },
                 "Tags": [
                     {
                         "Key": "Name", 
-                        "Value": "PrivateD"
+                        "Value": "PrivateC"
                     },
                     {
                         "Key": "network", 
@@ -332,20 +344,20 @@
             }, 
             "Type": "AWS::EC2::Subnet"
         }, 
-        "PrivateDRouteAssociation": {
+        "PrivateCRouteAssociation": {
             "Properties": {
                 "RouteTableId": {
-                    "Ref": "ZoneDPrivateRouteTable"
+                    "Ref": "ZoneCPrivateRouteTable"
                 }, 
                 "SubnetId": {
-                    "Ref": "PrivateD"
+                    "Ref": "PrivateC"
                 }
             }, 
             "Type": "AWS::EC2::SubnetRouteTableAssociation"
         }, 
         "PersistenceA": {
             "Properties": {
-                "AvailabilityZone": "us-east-1a", 
+                "AvailabilityZone": "us-west-2a", 
                 "CidrBlock": { 
                   "Fn::Join" : [ ".", [ { "Ref": "VpcCidrBlock" }, "20", "0/24" ] ] 
                 },
@@ -378,7 +390,7 @@
         }, 
         "PersistenceB": {
             "Properties": {
-                "AvailabilityZone": "us-east-1b", 
+                "AvailabilityZone": "us-west-2b", 
                 "CidrBlock": { 
                   "Fn::Join" : [ ".", [ { "Ref": "VpcCidrBlock" }, "21", "0/24" ] ] 
                 },
@@ -409,16 +421,16 @@
             }, 
             "Type": "AWS::EC2::SubnetRouteTableAssociation"
         }, 
-        "PersistenceD": {
+        "PersistenceC": {
             "Properties": {
-                "AvailabilityZone": "us-east-1d", 
+                "AvailabilityZone": "us-west-2c", 
                 "CidrBlock": { 
                   "Fn::Join" : [ ".", [ { "Ref": "VpcCidrBlock" }, "22", "0/24" ] ] 
                 },
                 "Tags": [
                     {
                         "Key": "Name", 
-                        "Value": "PersistenceD"
+                        "Value": "PersistenceC"
                     },
                     {
                         "Key": "network", 
@@ -431,13 +443,13 @@
             }, 
             "Type": "AWS::EC2::Subnet"
         }, 
-        "PersistenceDRouteAssociation": {
+        "PersistenceCRouteAssociation": {
             "Properties": {
                 "RouteTableId": {
-                    "Ref": "ZoneDPrivateRouteTable"
+                    "Ref": "ZoneCPrivateRouteTable"
                 }, 
                 "SubnetId": {
-                    "Ref": "PersistenceD"
+                    "Ref": "PersistenceC"
                 }
             }, 
             "Type": "AWS::EC2::SubnetRouteTableAssociation"
@@ -458,7 +470,7 @@
             },
             "Type": "AWS::EC2::RouteTable"
         },
-        "ZoneDPrivateRouteTable": {
+        "ZoneCPrivateRouteTable": {
             "Properties": {
                 "VpcId": {
                     "Ref": "Vpc"
