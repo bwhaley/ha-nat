@@ -4,8 +4,6 @@ A packer template to configure an HA NAT instance.
 ## Usage
 Make sure to have [Packer](https://packer.io/) installed, then:
 
-Variables:
-
     export AMI_NAME="ha-nat" # What name to use for this AMI for viewing in the web console
     export AWS_ACCESS_KEY_ID=<your access key>
     export AWS_SECRET_ACCESS_KEY=<your secret key>
