@@ -58,12 +58,12 @@
            "Properties" : {
               "AvailabilityZones" : [ "us-west-2a", "us-west-2b", "us-west-2c" ],
               "Cooldown" : "30",
-              "DesiredCapacity" : "1",
+              "DesiredCapacity" : "3",
               "HealthCheckGracePeriod" : "30",
               "HealthCheckType" : "EC2",
               "LaunchConfigurationName" : { "Ref": "NatAsgLaunchConfiguration"},
-              "MaxSize" : "1",
-              "MinSize" : "1",
+              "MaxSize" : "3",
+              "MinSize" : "3",
               "Tags" : [ {
                  "Key" : "Name",
                  "Value" : { "Fn::Join": [ "-", [ { "Ref": "VpcName" }, "NAT"] ] },
