@@ -137,14 +137,15 @@ log "HA NAT configuration parameters: Instance ID=$INSTANCE_ID, Region=$REGION, 
 
 # Get list of subnets in same VPC that have tag network=private
 PRIVATE_SUBNETS="$(${awscmd} ec2 describe-subnets --query 'Subnets[*].SubnetId' \
---filters Name=vpc-id,Values=$VPC_ID Name=state,Values=available Name=tag:network,Values=private)"
-# Uncomment this line and comment the line above for AZ-specific NAT
-#--filters Name=availability-zone,Values=$AVAILABILITY_ZONE Name=vpc-id,Values=$VPC_ID Name=state,Values=available Name=tag:network,Values=private)"
-  # If no private subnets found, exit out
-  if [ -z "$PRIVATE_SUBNETS" ]; then
-    die "No private subnets found to modify for HA NAT."
-  else log "Modifying Route Tables for following private subnets: $PRIVATE_SUBNETS"
-  fi
+--filters Name=availability-zone,Values=$AVAILABILITY_ZONE Name=vpc-id,Values=$VPC_ID Name=state,Values=available Name=tag:network,Values=private)"
+# Substitute the previous line with the next line if you want only one NAT instance for all zones (make sure to set the autoscale group to min/max/desired 1)
+#--filters Name=vpc-id,Values=$VPC_ID Name=state,Values=available Name=tag:network,Values=private)"
+# If no private subnets found, exit out
+if [ -z "$PRIVATE_SUBNETS" ]; then
+  die "No private subnets found to modify for HA NAT."
+else 
+  log "Modifying Route Tables for following private subnets: $PRIVATE_SUBNETS"
+fi
 for subnet in $PRIVATE_SUBNETS; do
   ROUTE_TABLE_ID=$(${awscmd} ec2 describe-route-tables --query 'RouteTables[*].RouteTableId' --filters Name=association.subnet-id,Values=$subnet);
   # If private tagged subnet is associated with Main Routing Table, do not create or modify route.
