@@ -35,7 +35,7 @@
            "Properties" : {
               "AssociatePublicIpAddress" : true,
               "EbsOptimized" : false,
-              "IamInstanceProfile" : "arn:aws:iam::797429411814:instance-profile/NAT",
+              "IamInstanceProfile" : "arn:aws:iam::012345678901:instance-profile/NAT",
               "ImageId" : { "Ref": "NatImage" },
               "InstanceType" : "t2.small",
               "KeyName" : { "Ref": "KeyName" },
@@ -87,20 +87,6 @@
                 }, 
                 "IpProtocol": "udp", 
                 "ToPort": "53"
-            }, 
-            "Type": "AWS::EC2::SecurityGroupIngress"
-        }, 
-        "NatPapertrail": {
-            "Properties": {
-                "CidrIp": {
-                  "Fn::Join" : [ ".", [ { "Ref": "VpcCidrBlock" }, "0", "0/24" ] ] 
-                },
-                "FromPort": "11652", 
-                "GroupId": {
-                    "Ref": "NatSG"
-                }, 
-                "IpProtocol": "udp", 
-                "ToPort": "11652"
             }, 
             "Type": "AWS::EC2::SecurityGroupIngress"
         }, 
