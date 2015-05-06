@@ -1,0 +1,15 @@
+#!/bin/sh -e
+#
+# rc.local
+#
+# This script is executed at the end of each multiuser runlevel.
+# Make sure that the script will "exit 0" on success or any other
+# value on error.  Effectively, commands in this file will be automatically
+# executed at boot as the root user
+#
+# In order to enable or disable this script just change the execution
+# bits.
+#
+# This file was placed by Packer (http://packer.io) as part of creating a HA NAT AMI.
+#
+/usr/local/bin/ha-nat.sh
