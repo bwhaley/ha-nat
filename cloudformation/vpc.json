@@ -3,7 +3,7 @@
 
   "Parameters" : {
     "KeyName": {
-      "Description" : "Name of existing keypair for access to the instance",
+      "Description" : "Name of existing keypair to use on the NAT instances",
       "Type": "String"
     },
     "VpcName": {
