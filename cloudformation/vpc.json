@@ -79,7 +79,7 @@
         "NatDNSIngress": {
             "Properties": {
                 "CidrIp": {
-                  "Fn::Join" : [ ".", [ { "Ref": "VpcCidrBlock" }, "0", "0/24" ] ] 
+                  "Fn::Join" : [ ".", [ { "Ref": "VpcCidrBlock" }, "0", "0/16" ] ] 
                 },
                 "FromPort": "53", 
                 "GroupId": {
@@ -93,7 +93,7 @@
         "NatHTTPIngress": {
             "Properties": {
                 "CidrIp": {
-                  "Fn::Join" : [ ".", [ { "Ref": "VpcCidrBlock" }, "0", "0/24" ] ] 
+                  "Fn::Join" : [ ".", [ { "Ref": "VpcCidrBlock" }, "0", "0/16" ] ] 
                 },
                 "FromPort": "80", 
                 "GroupId": {
@@ -107,7 +107,7 @@
         "NatHTTPSIngress": {
             "Properties": {
                 "CidrIp": {
-                  "Fn::Join" : [ ".", [ { "Ref": "VpcCidrBlock" }, "0", "0/24" ] ] 
+                  "Fn::Join" : [ ".", [ { "Ref": "VpcCidrBlock" }, "0", "0/16" ] ] 
                 },
                 "FromPort": "443", 
                 "GroupId": {
@@ -121,7 +121,7 @@
         "NatICMPIngress": {
             "Properties": {
                 "CidrIp": {
-                  "Fn::Join" : [ ".", [ { "Ref": "VpcCidrBlock" }, "0", "0/24" ] ] 
+                  "Fn::Join" : [ ".", [ { "Ref": "VpcCidrBlock" }, "0", "0/16" ] ] 
                 },
                 "FromPort": "-1", 
                 "GroupId": {
@@ -135,7 +135,7 @@
         "NatNTPIngress": {
             "Properties": {
                 "CidrIp": {
-                  "Fn::Join" : [ ".", [ { "Ref": "VpcCidrBlock" }, "0", "0/24" ] ] 
+                  "Fn::Join" : [ ".", [ { "Ref": "VpcCidrBlock" }, "0", "0/16" ] ] 
                 },
                 "FromPort": "123", 
                 "GroupId": {
